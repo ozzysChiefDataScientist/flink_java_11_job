@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.1.0'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+ext {
+    flinkVersion = '1.19.1'
+    log4jVersion = '2.17.1'
+}
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+    flinkShadowJar // dependencies which go into the shadowJar
+    // always exclude these (also from transitive dependencies) since they are provided by Flink
+    flinkShadowJar.exclude group: 'org.apache.flink', module: 'force-shading'
+    flinkShadowJar.exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    flinkShadowJar.exclude group: 'org.slf4j'
+    flinkShadowJar.exclude group: 'org.apache.logging.log4j'
+}
+
+dependencies {
+
+
+  // --------------------------------------------------------------
+  // Compile-time dependencies that should NOT be part of the
+  // shadow (uber) jar and are provided in the lib folder of Flink
+  // --------------------------------------------------------------
+  implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
+  implementation "org.apache.flink:flink-clients:${flinkVersion}"
+
+  implementation "org.apache.flink:flink-connector-files:${flinkVersion}"
+
+
+
+  // --------------------------------------------------------------
+  // Dependencies that should be part of the shadow jar, e.g.
+  // connectors. These must be in the flinkShadowJar configuration!
+  // --------------------------------------------------------------
+  flinkShadowJar "org.apache.flink:flink-connector-kafka:3.2.0-1.19"
+  runtimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}"
+  runtimeOnly "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+  runtimeOnly "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+
+}
+
+// Define the main class directly in the application plugin block
+application {
+    mainClassName = 'org.gradle.example.simple.WordCount'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'org.gradle.example.simple.WordCount'
+        )
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.flinkShadowJar]
+}
